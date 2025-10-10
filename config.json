@@ -1,0 +1,6 @@
+{
+    "wechat_ocr_exe_path": "填写你的WeChatOCR.exe路径",
+    "wechat_path": "填写你的微信安装路径",
+    "hotkey": "ctrl+alt+q",
+    "screenshot_delay": 0.15
+}
