@@ -9,7 +9,7 @@ import pystray
 
 from screenshot_tool import Screenshotter
 from ocr_tool import setup_ocr_manager, shutdown_ocr_manager, perform_ocr_on_image
-from hotkey_manager import hotkey_manager  # <-- 引入新的、稳定的热键管理器
+from hotkey_manager import hotkey_manager
 
 
 def get_resource_path(relative_path):
@@ -66,6 +66,11 @@ class Application:
         self.is_service_running = False
         self.tray_icon = None
 
+        # --- 【关键修改】 ---
+        # 1. 初始化状态变量
+        self.screenshot_after_id = None  # 用于存储 after() 方法返回的ID
+        self.active_screenshotter = None # 用于引用当前的截图工具实例
+
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
 
     def initialize_services(self):
@@ -82,9 +87,8 @@ class Application:
 
         try:
             hotkey = self.config["hotkey"]
-            # 注册热键，并将带延迟的截图函数作为回调
             if hotkey_manager.register(hotkey, self.trigger_screenshot):
-                hotkey_manager.start()  # 启动后台监听线程
+                hotkey_manager.start()
                 self.is_service_running = True
                 print(f"服务启动成功！原生热键 '{hotkey}' 已激活。")
                 show_toast_notification(None, f"WxOcr2Clip 开始运行\n热键: {hotkey}")
@@ -111,26 +115,45 @@ class Application:
         热键触发的入口点。由 hotkey_manager 在后台线程调用。
         使用 root.after 将任务安全地调度到主UI线程执行。
         """
+        # --- 【关键修改】 ---
+        # 2. 在调度新的截图任务前，先取消上一个未执行的
+        if self.screenshot_after_id:
+            self.root.after_cancel(self.screenshot_after_id)
+            print("取消了上一个待执行的截图计划。")
+
         delay_seconds = self.config.get("screenshot_delay", 0.1)
         delay_ms = int(delay_seconds * 1000)
 
         print(f"热键触发，将在 {delay_seconds} 秒后开始截图...")
 
-        # 使用 root.after() 安排实际的截图函数在主UI线程中延迟执行
-        self.root.after(delay_ms, self._execute_screenshot_flow)
+        # 3. 保存新的调度ID
+        self.screenshot_after_id = self.root.after(delay_ms, self._execute_screenshot_flow)
 
     def _execute_screenshot_flow(self):
         """
         这个函数包含实际的截图和OCR流程。
         它由 trigger_screenshot 通过延迟调用来执行，确保在主UI线程运行。
         """
+        # --- 【关键修改】 ---
+        # 4. 任务开始执行，清空调度ID
+        self.screenshot_after_id = None
+
+        # 5. 检查并销毁已存在的截图窗口
+        if self.active_screenshotter and self.active_screenshotter.win.winfo_exists():
+            print("检测到已存在的截图窗口，正在关闭...")
+            self.active_screenshotter.destroy()
+            # self.active_screenshotter 在 destroy 后会自动在 capture() 返回后被清理
+
         print("延迟结束，正式开始截图流程...")
-        ss = Screenshotter(self.root)
-        image = ss.capture()
+        # 6. 创建新实例并保存引用
+        self.active_screenshotter = Screenshotter(self.root)
+        image = self.active_screenshotter.capture()  # 这是一个阻塞操作
+
+        # 7. 截图流程结束后（无论成功或取消），清理引用
+        self.active_screenshotter = None
 
         if image:
             print("截图成功，正在提交OCR任务...")
-            # 在新的后台线程中执行OCR，避免阻塞UI
             threading.Thread(target=perform_ocr_on_image, args=(image,), daemon=True).start()
         else:
             print("截图已取消。")
@@ -151,20 +174,17 @@ class Application:
         """程序退出前的最终清理工作"""
         print("正在关闭服务...")
         if self.is_service_running:
-            hotkey_manager.stop()  # 安全地停止热键监听
-            shutdown_ocr_manager()  # 关闭 OCR 服务
+            hotkey_manager.stop()
+            shutdown_ocr_manager()
         print("程序已退出。")
 
     def run(self):
         self.initialize_services()
-        # 如果初始化失败，is_service_running会是False
         if not self.is_service_running:
             self.final_cleanup()
             return
 
-        # 只有在服务成功启动后才进入主循环
         self.root.mainloop()
-        # mainloop结束后，执行清理
         self.final_cleanup()
 
 
@@ -182,7 +202,7 @@ def setup_tray_icon(app_instance):
     app_instance.tray_icon = icon
     return icon
 
-
+# 程序入口
 if __name__ == "__main__":
     app = Application()
     tray_thread = threading.Thread(target=setup_tray_icon(app).run, daemon=True)
