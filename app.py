@@ -202,7 +202,6 @@ def setup_tray_icon(app_instance):
     app_instance.tray_icon = icon
     return icon
 
-# 程序入口
 if __name__ == "__main__":
     app = Application()
     tray_thread = threading.Thread(target=setup_tray_icon(app).run, daemon=True)
