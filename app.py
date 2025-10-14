@@ -70,6 +70,7 @@ class Application:
         # 1. 初始化状态变量
         self.screenshot_after_id = None  # 用于存储 after() 方法返回的ID
         self.active_screenshotter = None # 用于引用当前的截图工具实例
+        self.ocr_enabled = True  # 新增：OCR模式默认启用
 
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
 
@@ -148,13 +149,18 @@ class Application:
         # 6. 创建新实例并保存引用
         self.active_screenshotter = Screenshotter(self.root)
         image = self.active_screenshotter.capture()  # 这是一个阻塞操作
-
-        # 7. 截图流程结束后（无论成功或取消），清理引用
         self.active_screenshotter = None
 
         if image:
-            print("截图成功，正在提交OCR任务...")
-            threading.Thread(target=perform_ocr_on_image, args=(image,), daemon=True).start()
+            if self.ocr_enabled:
+                print("截图成功，正在提交OCR任务...")
+                threading.Thread(target=perform_ocr_on_image, args=(image,), daemon=True).start()
+            else:
+                print("截图成功，OCR模式未启用，直接保存图片到剪切板...")
+                try:
+                    self._copy_image_to_clipboard(image)
+                except Exception as e:
+                    print(f"保存图片到剪切板失败: {e}")
         else:
             print("截图已取消。")
 
@@ -187,17 +193,39 @@ class Application:
         self.root.mainloop()
         self.final_cleanup()
 
+    def _copy_image_to_clipboard(self, image):
+        # Windows下将PIL图片保存到剪切板
+        import io
+        import win32clipboard
+        from PIL import Image
+        output = io.BytesIO()
+        image.convert('RGB').save(output, 'BMP')
+        data = output.getvalue()[14:]
+        output.close()
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+        win32clipboard.CloseClipboard()
+
 
 def setup_tray_icon(app_instance):
     """创建并配置系统托盘图标"""
     icon_image = Image.open(ICON_FILE)
     def notify_status(icon, item):
         icon.notify("服务正在后台运行中。", "WxOcr2Clip")
-    menu = (
-        pystray.MenuItem('显示信息', notify_status),
-        pystray.MenuItem('退出', app_instance.shutdown)
-    )
-
+    def toggle_ocr_mode(icon, item):
+        app_instance.ocr_enabled = not app_instance.ocr_enabled
+        icon.menu = create_menu()  # 刷新菜单勾选状态
+        icon.update_menu()
+    def create_menu():
+        return pystray.Menu(
+            pystray.MenuItem(
+                '启用OCR模式', toggle_ocr_mode, checked=lambda item: app_instance.ocr_enabled
+            ),
+            pystray.MenuItem('显示信息', notify_status),
+            pystray.MenuItem('退出', app_instance.shutdown)
+        )
+    menu = create_menu()
     icon = pystray.Icon("WxOcr2Clip", icon_image, "WxOcr2Clip OCR", menu)
     app_instance.tray_icon = icon
     return icon

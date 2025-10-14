@@ -100,4 +100,3 @@ def perform_ocr_on_image(image):
                 os.remove(temp_path)
             except OSError as e:
                 print(f"删除临时文件失败: {e}")
-

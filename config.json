@@ -1,6 +1,6 @@
 {
-    "wechat_ocr_exe_path": "填写你的WeChatOCR.exe路径",
-    "wechat_path": "填写你的微信安装路径",
-    "hotkey": "ctrl+alt+q",
-    "screenshot_delay": 0.15
+    "wechat_ocr_exe_path": "C:/Users/Alucard/AppData/Roaming/Tencent/WeChat/XPlugin/Plugins/WeChatOCR/7079/extracted/WeChatOCR.exe",
+    "wechat_path": "E:/WeChat/[3.9.12.55]",
+    "hotkey": "ctrl+alt+a",
+    "screenshot_delay": 0.05
 }
