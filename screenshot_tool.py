@@ -98,3 +98,4 @@ class Screenshotter:
         self.win.wait_window(self.win)
         return self.captured_image
 
+

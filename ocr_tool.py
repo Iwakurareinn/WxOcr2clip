@@ -62,13 +62,10 @@ def perform_ocr_on_image(image):
         print("错误：OcrManager未运行或图像无效。")
         return
 
-    # --- 关键修改 ---
-    # 使用 get_resource_path 来确保临时文件路径的正确性
     temp_path = get_resource_path("temp_screenshot.png")
 
     try:
         image.save(temp_path)
-        # 此时 temp_path 已经是绝对路径，可以直接使用
         screenshot_file = temp_path
     except Exception as e:
         print(f"保存临时截图文件失败: {e}")

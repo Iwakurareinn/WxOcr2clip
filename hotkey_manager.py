@@ -103,5 +103,6 @@ class HotkeyManager:
             self._thread.join(timeout=2)  # 等待线程结束
 
 
+
 # 创建一个全局单例
 hotkey_manager = HotkeyManager()

@@ -65,12 +65,9 @@ class Application:
         self.config = None
         self.is_service_running = False
         self.tray_icon = None
-
-        # --- 【关键修改】 ---
-        # 1. 初始化状态变量
-        self.screenshot_after_id = None  # 用于存储 after() 方法返回的ID
-        self.active_screenshotter = None # 用于引用当前的截图工具实例
-        self.ocr_enabled = True  # 新增：OCR模式默认启用
+        self.screenshot_after_id = None
+        self.active_screenshotter = None
+        self.ocr_enabled = True
 
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
 
