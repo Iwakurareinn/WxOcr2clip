@@ -209,15 +209,17 @@ class SettingsPage(ttk.Frame):
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(new_config, f, indent=4)
             
-            messagebox.showinfo("保存成功", "配置已保存，将在后台重新加载服务。", parent=self)
+            messagebox.showinfo("保存成功", "配置已保存，正在应用新设置...", parent=self)
             
             if self.on_save_callback:
-                self._reload_services_thread()
+                # 将新的热键值传递给回调函数
+                self._reload_services_thread(new_config["hotkey"])
 
         except Exception as e:
             messagebox.showerror("保存失败", f"无法写入配置文件: {e}", parent=self)
             logging.error(f"保存配置失败: {e}")
 
-    def _reload_services_thread(self):
+    def _reload_services_thread(self, new_hotkey):
         """在后台线程中执行服务重载，避免UI卡死"""
-        threading.Thread(target=self.on_save_callback, daemon=True).start()
+        # 将新热键作为参数传递
+        threading.Thread(target=self.on_save_callback, args=(new_hotkey,), daemon=True).start()

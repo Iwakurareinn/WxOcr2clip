@@ -43,22 +43,18 @@ class Application:
         self.active_screenshotter = None
 
         # 将设置页面嵌入到主UI中
-        self.settings_page = SettingsPage(self.main_ui.settings_frame, CONFIG_FILE, self.logger, on_save_callback=self.reload_services)
+        self.settings_page = SettingsPage(self.main_ui.settings_frame, CONFIG_FILE, self.logger, on_save_callback=self.apply_new_hotkey)
         self.settings_page.pack(expand=True, fill="both")
 
-    def reload_services(self):
-        """停止、重新加载配置并重启所有服务"""
-        logging.info("检测到配置更改，正在重新加载服务...")
+    def apply_new_hotkey(self, new_hotkey):
+        """应用新的热键配置"""
+        logging.info(f"接收到新的热键配置: {new_hotkey}")
+        # 重新加载配置以确保所有设置都是最新的
+        self.load_config()
+        self.config['hotkey'] = new_hotkey # 确保内存中的配置也更新
         
-        # 1. 停止现有服务
-        if self.is_service_running:
-            hotkey_manager.stop()
-            shutdown_ocr_manager()
-            self.is_service_running = False
-            logging.info("旧服务已停止。")
-
-        # 2. 重新加载和初始化
-        self.initialize_services()
+        hotkey_manager.reregister_hotkeys(new_hotkey, self.trigger_screenshot)
+        self.main_ui.show_toast(f"热键已更新为: {new_hotkey}")
 
     def initialize_services(self):
         """加载配置、启动OCR和注册热键"""

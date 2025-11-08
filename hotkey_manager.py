@@ -102,6 +102,22 @@ class HotkeyManager:
             win32gui.PostThreadMessage(thread_id, win32con.WM_QUIT, 0, 0)
             self._thread.join(timeout=2)  # 等待线程结束
 
+    def reregister_hotkeys(self, hotkey_str, callback):
+        """重新注册所有热键，用于热重载"""
+        print("正在重新注册热键...")
+        self.stop()
+        
+        # 清空旧的热键并重置
+        self.hotkeys = {}
+        self.next_hotkey_id = 1
+        
+        # 注册新的热键
+        self.register(hotkey_str, callback)
+        
+        # 重新启动监听线程
+        self.start()
+        print(f"热键已更新为: {hotkey_str}")
+
 
 # 创建一个全局单例
 hotkey_manager = HotkeyManager()
