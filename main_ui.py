@@ -6,6 +6,7 @@ class MainUI(tk.Tk):
         super().__init__(*args, **kwargs)
         self.withdraw()  # 初始隐藏主窗口
         self.title("Ocr2Clip 控制面板")
+        self.iconbitmap('icon.ico') # 设置窗口左上角图标
         self.geometry("600x450")
         self.resizable(False, False)
         
